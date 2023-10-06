@@ -1,36 +1,39 @@
 name: Build and Push Image
 on:
-  release:
-    types: [released]
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      push:
+        description: 'Push image [true|false]'
+        required: false
+        default: 'false'
 
 jobs:
   build:
     name: Build and push image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
-    - name: Build Image
-      id: build-image
-      uses: redhat-actions/buildah-build@v2
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
       with:
-        image: pryorda/vmware_exporter
-        tags: latest ${{ github.sha }} ${{ github.event.release.tag_name }}
-        dockerfiles: |
-          ./Dockerfile
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    # Podman Login action (https://github.com/redhat-actions/podman-login) also be used to log in,
-    # in which case 'username' and 'password' can be omitted.
-    - name: Push To dhub
-      id: push-to-dhub
-      uses: redhat-actions/push-to-registry@v2
+    - name: Build and push image
+      uses: docker/build-push-action@v5
       with:
-        image: ${{ steps.build-image.outputs.image }}
-        tags: ${{ steps.build-image.outputs.tags }}
-        registry: docker.io
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-    - name: Print image url
-      run: echo "Image pushed to ${{ steps.push-to-dhub.outputs.registry-paths }}"
+        push: ${{ github.event.inputs.push != 'false' }}
+        platforms: linux/amd64
+        tags: ghcr.io/tigattack/vmware_exporter:main
+        cache-from: type=gha,scope=build-${{ matrix.base }}
+        cache-to: type=gha,mode=max,scope=build-${{ matrix.base }}
+        provenance: false
