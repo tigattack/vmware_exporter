@@ -1,6 +1,6 @@
 # vmware_exporter
 
-VMware vCenter Exporter for Prometheus.
+Forked VMware vCenter Exporter for Prometheus, excludes VM templates.
 
 Get VMware vCenter information:
 - Basic VM and Host metrics

@@ -141,10 +141,6 @@ class VmwareCollector():
                 'vmware_vm_max_cpu_usage',
                 'VMWare VM Cpu Max availability in hz',
                 labels=self._labelNames['vms']),
-            'vmware_vm_template': GaugeMetricFamily(
-                'vmware_vm_template',
-                'VMWare VM Template (true / false)',
-                labels=self._labelNames['vms']),
         }
         metric_list['vmguests'] = {
             'vmware_vm_guest_disk_free': GaugeMetricFamily(
@@ -777,6 +773,16 @@ class VmwareCollector():
             vim.VirtualMachine,
             properties,
         )
+
+        # Iterate through VMs to discover VM templates
+        vm_templates = []
+        for vm_moId, vm in virtual_machines.items():
+            if vm.get('summary.config.template', False):
+                vm_templates.append(vm_moId)
+
+        # Remove templates from inventory
+        for key in vm_templates:
+            virtual_machines.pop(key)
 
         """
         once custom attributes are fetched,
@@ -1580,9 +1586,6 @@ class VmwareCollector():
 
             if 'runtime.maxCpuUsage' in row:
                 metrics['vmware_vm_max_cpu_usage'].add_metric(labels, row['runtime.maxCpuUsage'])
-
-            if 'summary.config.template' in row:
-                metrics['vmware_vm_template'].add_metric(labels, row['summary.config.template'])
 
             if 'guest.disk' in row and len(row['guest.disk']) > 0:
                 for disk in row['guest.disk']:
